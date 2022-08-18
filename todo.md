@@ -15,3 +15,9 @@ python manage.py startapp bot
 python manage.py migrate
 
 python manage.py makemigrations bot -->
+
+tisychnoe_sp_gulkevich_oper2
+vS2JI492
+
+
++79117603113 Кирилл

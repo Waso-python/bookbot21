@@ -19,7 +19,11 @@ bot = telebot.TeleBot(os.getenv('TOKEN'))
 # bot.send_message(message.from_user.id, models.User.objects.get(login = message.text).firstname)
 # print(models.User.objects.get(login = message.text).firstname)
 
-
+@bot.callback_query_handler(func=lambda call: True) #вешаем обработчик событий на нажатие всех inline-кнопок
+def callback_inline(call): 
+	if call.data:
+		print(call.data)
+		# print(call['data']) #проверяем есть ли данные если да, далаем с ними что-то.
 
 
 @bot.message_handler(commands=['start'])
@@ -66,8 +70,31 @@ def check_reg(message_json, data:dict = {}):
 			data[chat_id][0].firstname = message_json['text']
 			# print(data[chat_id][0].firstname)
 			data[chat_id][1] = False
-	print(data[chat_id][0].login)	
+	if data[chat_id][0].campus == None and data[chat_id][0].firstname != None:
+		markup = types.InlineKeyboardMarkup()
+		btns = []
+		keys = models.Campus.objects.all().values_list('id', 'name')
+		for i in keys:
+			btns.append(types.InlineKeyboardButton(i[1], callback_data = i[0]))
+		markup.add(*btns)
+		if data[chat_id][1] == False:
+			bot.send_message(chat_id, "Выбери кампус", reply_markup=markup)
+			data[chat_id][1] = True
+		else:
+			data[chat_id][0].campus = message_json['text']
+			# print(data[chat_id][0].firstname)
+			data[chat_id][1] = False
+	
+
+
+
+
+	print(data[chat_id][0].login)
 	print(data[chat_id][0].firstname)
+	print(data[chat_id][0].campus)
+
+	
+	
 	
 
 bot.polling(none_stop=True, interval=0)
