@@ -68,9 +68,9 @@ class User(models.Model):
     firstname = models.CharField(max_length=255, verbose_name='Имя', null=True)
     surname = models.CharField(max_length=255, verbose_name='Отчество', null=True, blank=True)
     lastname = models.CharField(max_length=255, verbose_name='Фамилия', null=True, blank=True)
-    role = models.ForeignKey(Role, on_delete=models.CASCADE, verbose_name='Role', default=1)
+    role = models.ForeignKey(Role, on_delete=models.CASCADE, verbose_name='Role', null=True)
     login = models.CharField(max_length=25, verbose_name='Логин', null=True)
-    campus = models.ForeignKey(Campus, on_delete=models.CASCADE, verbose_name='Campus', default=1)
+    campus = models.ForeignKey(Campus, on_delete=models.CASCADE, verbose_name='Campus', null=True)
     bot_id = models.CharField(max_length=255, blank=True, null=True, verbose_name='Telegram ID')
 
     class Meta:
@@ -78,7 +78,7 @@ class User(models.Model):
         verbose_name_plural = "Пользователи"
 
     def __str__(self):
-        return self.firstname + ' ' + self.login + ' ['+self.role.name+']'
+        return str(self.firstname) + ' ' + str(self.login) + ' ['+str(self.role.name)+']'
 
 
 class Booking(models.Model):

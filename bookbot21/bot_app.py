@@ -18,11 +18,21 @@ bot = telebot.TeleBot(os.getenv('TOKEN'))
 # print(var)
 # bot.send_message(message.from_user.id, models.User.objects.get(login = message.text).firstname)
 # print(models.User.objects.get(login = message.text).firstname)
+data:dict = {}
+
+
 
 @bot.callback_query_handler(func=lambda call: True) #вешаем обработчик событий на нажатие всех inline-кнопок
 def callback_inline(call): 
 	if call.data:
 		print(call.data)
+		chat_id = call.from_user.id
+		data[chat_id][0].campus = models.Campus.objects.get(pk = int(call.data))
+		print('1 '+str(data[chat_id][0].login))
+		print('2 '+str(data[chat_id][0].firstname))
+		print('3 ' + str(data[chat_id][0].campus))
+		print(data[chat_id][0].campus.name)
+		
 		# print(call['data']) #проверяем есть ли данные если да, далаем с ними что-то.
 
 
@@ -37,7 +47,8 @@ def anonym(message):
 
 
 
-def check_reg(message_json, data:dict = {}):
+def check_reg(message_json):
+	global data
 	print(len(data))
 	print(message_json)
 	
@@ -79,19 +90,23 @@ def check_reg(message_json, data:dict = {}):
 		markup.add(*btns)
 		if data[chat_id][1] == False:
 			bot.send_message(chat_id, "Выбери кампус", reply_markup=markup)
-			data[chat_id][1] = True
+			data[chat_id][1] == True
 		else:
-			data[chat_id][0].campus = message_json['text']
-			# print(data[chat_id][0].firstname)
 			data[chat_id][1] = False
+	if data[chat_id][0].role == None and data[chat_id][0].campus != None:
+		markup = types.InlineKeyboardMarkup()
+		btns = []
+		keys = models.role.objects.all().values_list('id', 'name')
+		for i in keys:
+			btns.append(types.InlineKeyboardButton(i[1], callback_data = i[0]))
+		markup.add(*btns)
+		if data[chat_id][1] == False:
+			bot.send_message(chat_id, "Кто ты по жизни?", reply_markup=markup)
 	
 
-
-
-
-	print(data[chat_id][0].login)
-	print(data[chat_id][0].firstname)
-	print(data[chat_id][0].campus)
+	print('1 '+str(data[chat_id][0].login))
+	print('2 '+str(data[chat_id][0].firstname))
+	print('3 ' + str(data[chat_id][0].campus))
 
 	
 	
