@@ -1,4 +1,5 @@
 from email import message
+from operator import contains
 from tbot import tbot_config
 from bot import models
 import os
@@ -20,18 +21,66 @@ bot = telebot.TeleBot(os.getenv('TOKEN'))
 # print(models.User.objects.get(login = message.text).firstname)
 data:dict = {}
 
-
+def get_buttons(model, key, *args):
+	markup = types.InlineKeyboardMarkup()
+	btns = []
+	keys = model.objects.all().values_list(*args)
+	for i in keys:
+		btns.append(types.InlineKeyboardButton(i[1], callback_data = str(i[0])+'_' +key))
+	markup.add(*btns)
+	return markup
 
 @bot.callback_query_handler(func=lambda call: True) #вешаем обработчик событий на нажатие всех inline-кнопок
 def callback_inline(call): 
-	if call.data:
-		print(call.data)
+	if call.data and call.from_user.id in data:
+		spl = str(call.data).split('_')
 		chat_id = call.from_user.id
-		data[chat_id][0].campus = models.Campus.objects.get(pk = int(call.data))
-		print('1 '+str(data[chat_id][0].login))
-		print('2 '+str(data[chat_id][0].firstname))
+		if "campus" in spl:
+			
+			print(call.data)
+			
+			
+			data[chat_id][0].campus = models.Campus.objects.get(pk = int(spl[0]))
+			bot.send_message(call.from_user.id, data[chat_id][0].campus)
+			bot.edit_message_reply_markup(call.message.chat.id, call.message.id, types.ReplyKeyboardRemove())
+			
+			bot.send_message(chat_id, "Кто ты?", reply_markup=get_buttons(models.Role, 'roles', 'id', 'name'))
+
+
+
+		if "roles" in spl:
+
+			print(call.data)
+			
+			
+			data[chat_id][0].role = models.Role.objects.get(pk = int(spl[0]))
+			bot.edit_message_reply_markup(call.message.chat.id, call.message.id, types.ReplyKeyboardRemove())
+
+			bot.send_message(call.from_user.id, f'Твой логин - {str(data[chat_id][0].login)}, твое имя - {str(data[chat_id][0].firstname)},кампус -  {str(data[chat_id][0].campus)},ты - {str(data[chat_id][0].role)}?')
+			markup = types.InlineKeyboardMarkup()
+			btn_yes = types.InlineKeyboardButton('Да', callback_data = 'reg-yes')
+			btn_no = types.InlineKeyboardButton('Нет', callback_data = 'reg-no')
+			markup.add(btn_yes, btn_no)
+			bot.send_message(chat_id, "Все верно?", reply_markup=markup)
+			
+		if "reg-yes" in spl:
+			#go to main menu
+			data[chat_id][0].bot_id = chat_id
+			data[chat_id][0].save()
+			bot.edit_message_reply_markup(call.message.chat.id, call.message.id, types.ReplyKeyboardRemove())
+			bot.send_message(call.message.chat.id, 'Регистрация завершена')
+
+		print('1 ' + str(data[chat_id][0].login))
+		print('2 ' + str(data[chat_id][0].firstname))
 		print('3 ' + str(data[chat_id][0].campus))
-		print(data[chat_id][0].campus.name)
+		print('4 ' + str(data[chat_id][0].role))
+		
+		if "reg-no" in spl:
+			#go to main menu
+			del data[chat_id]
+			bot.edit_message_reply_markup(call.message.chat.id, call.message.id, types.ReplyKeyboardRemove())
+			# bot.send_message(call.message.chat.id, 'Регистрация завершена')
+	
 		
 		# print(call['data']) #проверяем есть ли данные если да, далаем с ними что-то.
 
@@ -82,26 +131,27 @@ def check_reg(message_json):
 			# print(data[chat_id][0].firstname)
 			data[chat_id][1] = False
 	if data[chat_id][0].campus == None and data[chat_id][0].firstname != None:
-		markup = types.InlineKeyboardMarkup()
-		btns = []
-		keys = models.Campus.objects.all().values_list('id', 'name')
-		for i in keys:
-			btns.append(types.InlineKeyboardButton(i[1], callback_data = i[0]))
-		markup.add(*btns)
+		# markup = types.InlineKeyboardMarkup()
+		# btns = []
+		# keys = models.Campus.objects.all().values_list('id', 'name')
+		
+		# for i in keys:
+		# 	btns.append(types.InlineKeyboardButton(i[1], callback_data = str(i[0])+'_campus'))
+		# markup.add(*btns)
 		if data[chat_id][1] == False:
-			bot.send_message(chat_id, "Выбери кампус", reply_markup=markup)
+			bot.send_message(chat_id, "Выбери кампус", reply_markup=get_buttons(models.Campus, 'campus', 'id', 'name'))
 			data[chat_id][1] == True
 		else:
 			data[chat_id][1] = False
-	if data[chat_id][0].role == None and data[chat_id][0].campus != None:
-		markup = types.InlineKeyboardMarkup()
-		btns = []
-		keys = models.role.objects.all().values_list('id', 'name')
-		for i in keys:
-			btns.append(types.InlineKeyboardButton(i[1], callback_data = i[0]))
-		markup.add(*btns)
-		if data[chat_id][1] == False:
-			bot.send_message(chat_id, "Кто ты по жизни?", reply_markup=markup)
+	# if data[chat_id][0].role == None and data[chat_id][0].campus != None:
+		# markup = types.InlineKeyboardMarkup()
+		# btns = []
+		# keys = models.Role.objects.all().values_list('id', 'name')
+		# for i in keys:
+		# 	btns.append(types.InlineKeyboardButton(i[1], callback_data = str(i[0])+'_roles'))
+		# markup.add(*btns)
+		# if data[chat_id][1] == False:
+		# 	bot.send_message(chat_id, "Кто ты по жизни?", reply_markup=get_buttons(models.Role, 'id', 'name'))
 	
 
 	print('1 '+str(data[chat_id][0].login))
