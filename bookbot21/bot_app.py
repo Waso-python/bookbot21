@@ -57,13 +57,25 @@ def get_buttons(model, key, *args, **kwargs):
 	if 'req' in kwargs:
 		keys = model.objects.filter(is_admin = False).values_list(*args)
 	elif 'type_id' in kwargs:
-		keys = model.objects.filter(object_type_id = kwargs['type_id']).values_list(*args)
+		# models.Role.objects.get(id = kwargs['type_id']).school_objects.all()
+		# keys = models.Role.objects.get(id = kwargs['type_id']).school_objects.all().values_list(*args)
+		role_id = models.User.objects.get(bot_id = kwargs['user_bot_id']).role.id
+		# models.Role.objects.get(id = role_id).school_objects.all().filter(object_type_id = kwargs['type_id'])
+		keys = models.Role.objects.get(id = role_id).school_objects.all().filter(object_type_id = kwargs['type_id']).values_list(*args)
 	elif 'days' in kwargs:
 		date_now = datetime.now().date()
 		keys = []
 		for i in range(30):
 			keys.append([str(date_now) ,str(date_now)])
 			date_now += timedelta(days=1)
+	elif 'hours' in kwargs:
+		print(kwargs)
+		time = models.Booking.objects.filter(school_object=kwargs['school_object'], start__date=kwargs['hours']).values_list('start__time')
+		print(time)
+
+		keys = []
+		for i in range(24):
+			keys.append([f'{i}:00', f'{i}:00'])
 	else:
 		keys = model.objects.all().values_list(*args)
 	for i in keys:
@@ -105,7 +117,7 @@ def callback_inline(call):
 			data[chat_id][0].save()
 			# bot.edit_message_reply_markup(call.message.chat.id, call.message.id, types.ReplyKeyboardRemove())
 			del data[chat_id]
-			bot.send_message(call.message.chat.id, 'Регистрация завершена')
+			bot.send_message(call.message.chat.id, 'Бронирование завершена')
 		
 		if "reg-no" in spl:
 			del data[chat_id]
@@ -123,7 +135,7 @@ def callback_inline(call):
 	
 	if "types" in spl:
 		print(int(spl[0]))
-		book_data[chat_id][2] = bot.send_message(chat_id, 'Выберите объект', reply_markup=get_buttons(models.SchoolObject, 'objects', 'id', 'object_name', type_id = int(spl[0])))
+		book_data[chat_id][2] = bot.send_message(chat_id, 'Выберите объект', reply_markup=get_buttons(models.SchoolObject, 'objects', 'id', 'object_name', type_id = int(spl[0]), user_bot_id = chat_id))
 
 	if "objects" in spl:
 		print(int(spl[0]))
@@ -131,11 +143,39 @@ def callback_inline(call):
 		book_data[chat_id][2] = bot.send_message(chat_id, 'Выберите дату', reply_markup=get_buttons(None, 'days', days = None))	
 	
 	if "days" in spl:
-		print(int(spl[0]))
-		book_data[chat_id][0].school_object_id = int(spl[0])
-		book_data[chat_id][2] = bot.send_message(chat_id, 'Выберите дату', reply_markup=get_buttons(None, 'days', days = None))	
+		book_data[chat_id][0].start = datetime.strptime(spl[0],'%Y-%m-%d')
+		print(book_data[chat_id][0].start)
+		book_data[chat_id][2] = bot.send_message(chat_id, 'Выберите время', reply_markup=get_buttons(None, 'hours', hours = book_data[chat_id][0].start, school_object=book_data[chat_id][0].school_object_id))
 
-	
+	if "hours" in spl:
+		# print(type(book_data[chat_id][0].start.date))
+		# print(datetime.strptime(spl[0], '%H:%M').time())
+		book_data[chat_id][0].start = datetime.combine(book_data[chat_id][0].start.date(), datetime.strptime(spl[0], '%H:%M').time())
+		book_data[chat_id][0].end = book_data[chat_id][0].start + timedelta(hours=1)
+		print(book_data[chat_id][0].start)
+		markup = types.InlineKeyboardMarkup()
+		btn_yes = types.InlineKeyboardButton('Да', callback_data = 'book-yes')
+		btn_no = types.InlineKeyboardButton('Нет', callback_data = 'book-no')
+		markup.add(btn_yes, btn_no)
+		book_data[chat_id][2] = bot.send_message(chat_id, f'{book_data[chat_id][0].school_object}\n{book_data[chat_id][0].start}\n{book_data[chat_id][0].end}\n', reply_markup=markup)
+
+	if "book-yes" in spl:
+		#go to main menu
+		book_data[chat_id][0].user = models.User.objects.get(bot_id=chat_id)
+		book_data[chat_id][0].status = models.Status.objects.filter(name__contains='брон')[0]
+		book_data[chat_id][0].save()
+		# bot.edit_message_reply_markup(call.message.chat.id, call.message.id, types.ReplyKeyboardRemove())
+		del book_data[chat_id]
+		bot.send_message(call.message.chat.id, 'Регистрация завершена')
+		
+	if "book-no" in spl:
+		del book_data[chat_id]
+		# book_data[chat_id][2] = bot.send_message(chat_id, 'Выберите дату', reply_markup=get_buttons(None, 'hours', hours = None))
+		
+		# book_data[chat_id][0].school_object_id = int(spl[0])
+		# book_data[chat_id][2] = bot.send_message(chat_id, 'Выберите дату', reply_markup=get_buttons(None, 'days', days = None))	
+
+
 
 
 @bot.message_handler(commands=['start'])
@@ -208,8 +248,8 @@ def main_menu(message):
 	# else:
 	# 	del_message(chat_id, message)
 	
-	if book_data[chat_id][0].school_object_id == None:
-		book_data[chat_id][2] = bot.send_message(chat_id, 'Выберите типы объектов', reply_markup=get_buttons(models.ObjectType, 'types', 'id', 'name'))
+	
+	book_data[chat_id][2] = bot.send_message(chat_id, 'Выберите типы объектов', reply_markup=get_buttons(models.ObjectType, 'types', 'id', 'name'))
 		
 	
 	
