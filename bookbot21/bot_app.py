@@ -1,4 +1,3 @@
-from email import message
 from operator import contains
 from tbot import tbot_config
 from bot import models
@@ -9,11 +8,14 @@ from telebot import types
 
 
 dotenv_path = os.path.join(os.path.dirname(__file__), '.env')
+
 if os.path.exists(dotenv_path):
-    load_dotenv(dotenv_path)
+	
+	load_dotenv(dotenv_path)
 
 
 
+# bot = telebot.TeleBot('')
 bot = telebot.TeleBot(os.getenv('TOKEN'))
 # var = models.User.objects.all().values_list('login')
 # print(var)
@@ -30,11 +32,17 @@ def get_buttons(model, key, *args):
 	markup.add(*btns)
 	return markup
 
+
+@bot.message_handler(content_types='text')
+def anonym(message):
+	check_reg(message.json)
+
 @bot.callback_query_handler(func=lambda call: True) #вешаем обработчик событий на нажатие всех inline-кнопок
 def callback_inline(call): 
+	spl = str(call.data).split('_')
+	chat_id = call.from_user.id
 	if call.data and call.from_user.id in data:
-		spl = str(call.data).split('_')
-		chat_id = call.from_user.id
+		
 		if "campus" in spl:
 			
 			print(call.data)
@@ -80,7 +88,18 @@ def callback_inline(call):
 			del data[chat_id]
 			bot.edit_message_reply_markup(call.message.chat.id, call.message.id, types.ReplyKeyboardRemove())
 			# bot.send_message(call.message.chat.id, 'Регистрация завершена')
-	
+
+	if "del-yes" in spl:
+		#go to main menu
+		models.User.objects.get(bot_id = chat_id).delete()
+		del data[chat_id]
+		bot.edit_message_reply_markup(call.message.chat.id, call.message.id, types.ReplyKeyboardRemove())
+		bot.send_message(call.message.chat.id, 'User deleted')
+
+	if "del-no" in spl:
+		#go to main menu
+		bot.edit_message_reply_markup(call.message.chat.id, call.message.id, types.ReplyKeyboardRemove())
+			
 		
 		# print(call['data']) #проверяем есть ли данные если да, далаем с ними что-то.
 
@@ -89,10 +108,21 @@ def callback_inline(call):
 def check(message):
 	check_reg(message.json)
 
+@bot.message_handler(commands=['delete'])
+def check(message):
+	
+	chat_id = message.json['from']['id']
+	try:
+		models.User.objects.get(bot_id = chat_id)
+		markup = types.InlineKeyboardMarkup()
+		btn_yes = types.InlineKeyboardButton('Да', callback_data = 'del-yes')
+		btn_no = types.InlineKeyboardButton('Нет', callback_data = 'del-no')
+		markup.add(btn_yes, btn_no)
+		bot.send_message(message.chat.id, "Удалить данные о Вас?", reply_markup=markup)
+	except:
+		check_reg(message.json)
+	
 
-@bot.message_handler(content_types='text')
-def anonym(message):
-	check_reg(message.json)
 
 
 
