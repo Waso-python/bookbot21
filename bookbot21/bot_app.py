@@ -19,6 +19,13 @@ bot = telebot.TeleBot(os.getenv('TOKEN'))
 
 data:dict = {}
 book_data:dict = {}
+#-------------------------********------------------------------------#
+#-------------------------COMMANDS------------------------------------#
+#-------------------------********------------------------------------#
+@bot.message_handler(commands=['start'])
+def check(message):
+	check_reg(message)
+
 
 @bot.message_handler(commands=['delete'])
 def delete(message):
@@ -60,6 +67,11 @@ def get_user_booking(message):
 		bot.send_message(message.json['from']['id'], 'В системе нет данных о вас! Пожалуйста зарегистрируйтесь')
 
 
+#-------------------------****************------------------------------------#
+#-------------------------SHARE__FUNCTIONS------------------------------------#
+#-------------------------****************------------------------------------#
+
+
 def del_message(chat_id, *args):
 	for message_id in args:
 		if message_id:
@@ -74,6 +86,12 @@ def get_buttons(model, key, *args, **kwargs):
 	
 	if 'req' in kwargs:
 		keys = model.objects.filter(is_admin = False).values_list(*args)
+	elif 'obj_types' in kwargs:
+		user = models.User.objects.get(bot_id = kwargs['obj_types'])
+		role_id = user.role.id
+		user_campus = user.campus.id
+		user_obj = models.Role.objects.get(id = role_id).school_objects.filter(object_campus_id=user_campus).values_list('object_type_id', 'object_type_id__name')
+		keys = set(user_obj)
 	elif 'type_id' in kwargs:
 		# models.Role.objects.get(id = kwargs['type_id']).school_objects.all()
 		# keys = models.Role.objects.get(id = kwargs['type_id']).school_objects.all().values_list(*args)
@@ -104,13 +122,17 @@ def get_buttons(model, key, *args, **kwargs):
 	return markup
 
 
+#-------------------------****************------------------------------------#
+#-------------------------CALLBACK_BUTTONS------------------------------------#
+#-------------------------****************------------------------------------#
+
 @bot.callback_query_handler(func=lambda call: True) #вешаем обработчик событий на нажатие всех inline-кнопок
 def callback_inline(call):
 	print(call.data)
 	spl = str(call.data).split('_')
 	chat_id = call.from_user.id
 
-	if call.data and call.from_user.id in data:
+	if chat_id in data:
 		del_message(chat_id, data[chat_id][2])		
 		if "campus" in spl:
 			print(call.data)
@@ -124,7 +146,7 @@ def callback_inline(call):
 			btn_yes = types.InlineKeyboardButton('Да', callback_data = 'reg-yes')
 			btn_no = types.InlineKeyboardButton('Нет', callback_data = 'reg-no')
 			markup.add(btn_yes, btn_no)
-			data[chat_id][2] = bot.send_message(call.from_user.id, f'Твой логин - {str(data[chat_id][0].login)}\nТвое имя - {str(data[chat_id][0].firstname)}\nКампус -  {str(data[chat_id][0].campus)}\nТы - {str(data[chat_id][0].role)}\nВсе Верно?', reply_markup=markup)
+			data[chat_id][2] = bot.send_message(chat_id, f'Твой логин - {str(data[chat_id][0].login)}\nТвое имя - {str(data[chat_id][0].firstname)}\nКампус -  {str(data[chat_id][0].campus)}\nТы - {str(data[chat_id][0].role)}\nВсе Верно?', reply_markup=markup)
 			
 		# print('1 ' + str(data[chat_id][0].login))
 		# print('2 ' + str(data[chat_id][0].firstname))
@@ -158,6 +180,8 @@ def callback_inline(call):
 		del_message(chat_id, book_data[chat_id][2])
 		if "types" in spl:
 			print(int(spl[0]))
+			
+			
 			book_data[chat_id][2] = bot.send_message(chat_id, 'Выберите объект', reply_markup=get_buttons(models.SchoolObject, 'objects', 'id', 'object_name', type_id = int(spl[0]), user_bot_id = chat_id))
 
 		if "objects" in spl:
@@ -195,12 +219,10 @@ def callback_inline(call):
 			del book_data[chat_id]
 	
 
+#-------------------------*****************------------------------------------#
+#-------------------------TEXT_INSTRUCTIONS------------------------------------#
+#-------------------------*****************------------------------------------#
 
-
-
-@bot.message_handler(commands=['start'])
-def check(message):
-	check_reg(message)
 
 @bot.message_handler(content_types='text')
 def check_reg(message):
@@ -210,7 +232,7 @@ def check_reg(message):
 	chat_id = message.json['from']['id']
 	try:
 		models.User.objects.get(bot_id = chat_id)
-		main_menu(message) # go to main menu
+		start_booking(message) # go to main menu
 		return
 	except models.User.DoesNotExist as e:
 		print('EXEPTION', e)
@@ -253,7 +275,7 @@ def check_reg(message):
 
 #////////////////////////////////////////////////////////////////////////////////////////////////////
 
-def main_menu(message):
+def start_booking(message):
 	
 	# ObjectType
 	global book_data
@@ -270,7 +292,7 @@ def main_menu(message):
 	# 	del_message(chat_id, message)
 	
 	
-	book_data[chat_id][2] = bot.send_message(chat_id, 'Выберите типы объектов', reply_markup=get_buttons(models.ObjectType, 'types', 'id', 'name'))
+	book_data[chat_id][2] = bot.send_message(chat_id, 'Выберите типы объектов', reply_markup=get_buttons(models.ObjectType, 'types', 'id', 'name', obj_types = chat_id))
 	
 	return	
 
