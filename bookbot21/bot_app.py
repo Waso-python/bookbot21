@@ -32,6 +32,14 @@ def start(message):
 	# 	del_message(chat_id, book_data[chat_id][2])	
 	check_reg(message)
 
+@bot.message_handler(commands=['url'])
+def get_all_booking(message):
+	chat_id = message.json['from']['id']
+	markup = types.InlineKeyboardMarkup()
+	button = types.InlineKeyboardButton("Посмотреть все бронирования", url='http://mu.com.ru:8000')
+	markup.add(button)
+	bot.send_message(message.chat.id, "Удалить данные о Вас?", reply_markup=markup)
+
 
 @bot.message_handler(commands=['delete'])
 def delete(message):
@@ -95,6 +103,7 @@ def get_buttons(model, key, *args, **kwargs):
 	if 'req' in kwargs:
 		keys = model.objects.filter(is_admin = False).values_list(*args)
 	elif 'obj_types' in kwargs:
+		markup = types.InlineKeyboardMarkup(row_width=2)
 		user = models.User.objects.get(bot_id = kwargs['obj_types'])
 		role_id = user.role.id
 		user_campus = user.campus.id
