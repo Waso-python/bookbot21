@@ -36,9 +36,9 @@ def start(message):
 def get_all_booking(message):
 	chat_id = message.json['from']['id']
 	markup = types.InlineKeyboardMarkup()
-	button = types.InlineKeyboardButton("Посмотреть все бронирования", url='http://mu.com.ru:8000')
+	button = types.InlineKeyboardButton("Ссылка", url='http://mu.com.ru:8000')
 	markup.add(button)
-	bot.send_message(message.chat.id, "Удалить данные о Вас?", reply_markup=markup)
+	bot.send_message(message.chat.id, "Посмотреть все бронирования", reply_markup=markup)
 
 
 @bot.message_handler(commands=['delete'])
