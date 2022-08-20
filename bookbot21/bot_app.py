@@ -6,7 +6,7 @@ import os
 from dotenv import load_dotenv
 import telebot
 from telebot import types
-import pytz
+
 
 
 dotenv_path = os.path.join(os.path.dirname(__file__), '.env')
@@ -23,7 +23,13 @@ book_data:dict = {}
 #-------------------------COMMANDS------------------------------------#
 #-------------------------********------------------------------------#
 @bot.message_handler(commands=['start'])
-def check(message):
+def start(message):
+	global data, book_data
+	chat_id = message.json['from']['id']
+	# if chat_id in data:
+	# 	del_message(chat_id, data[chat_id][2])
+	# if chat_id in book_data:
+	# 	del_message(chat_id, book_data[chat_id][2])	
 	check_reg(message)
 
 
@@ -43,6 +49,8 @@ def delete(message):
 
 @bot.message_handler(commands=['self'])
 def get_user_info(message):
+	global book_data
+	chat_id = message.json['from']['id']
 	try:
 		user = models.User.objects.get(bot_id=message.json['from']['id'])
 		bot.send_message(message.json['from']['id'], f"Имя - {user.firstname}\nЛогин - {user.login}\nКампус - {user.campus.name}\n Роль - {user.role.name}"  )
@@ -54,17 +62,17 @@ def get_user_info(message):
 def get_user_booking(message):
 	chat_id = message.json['from']['id']
 	try:
-		booking_obj = models.Booking.objects.filter(user__bot_id=chat_id, start__gte=datetime.now())
-		booking = ''
-		for elem in booking_obj:
-			booking += str(elem) + '\n'
-		if len(booking) > 0:
-			bot.send_message(message.json['from']['id'], booking)
+		user = models.User.objects.get(bot_id=chat_id)
+		count = len(models.Booking.objects.filter(user__bot_id=chat_id, end__gte=datetime.now()))
+		print(f'count {count}')
+		if count > 0:
+			book_data[chat_id][2] = bot.send_message(chat_id, "Ваши бронирования", reply_markup=get_buttons(models.Booking, 'booking', 'id', booking=chat_id))
 		else:
-			bot.send_message(message.json['from']['id'], 'Нет бронирований')
-	except models.User.DoesNotExist as e:
+			book_data[chat_id][2] = bot.send_message(chat_id, "Нет бронирований")
+	except (models.User.DoesNotExist, KeyError) as e:
 		print('SELF' ,e)
-		bot.send_message(message.json['from']['id'], 'В системе нет данных о вас! Пожалуйста зарегистрируйтесь')
+		start(message)
+		# bot.send_message(message.json['from']['id'], 'В системе нет данных о вас! Пожалуйста зарегистрируйтесь')
 
 
 #-------------------------****************------------------------------------#
@@ -114,6 +122,13 @@ def get_buttons(model, key, *args, **kwargs):
 		for i in range(24):
 			if (datetime.strptime(f'{i}:00:00', '%H:%M:%S').time(),) not in time:
 				keys.append([f'{i}:00:00', f'{i}:00'])
+	elif 'booking' in kwargs:
+		keys = []
+		booking = model.objects.filter(user__bot_id=kwargs['booking'], end__gte=datetime.now())
+		for i in booking:
+			print(i)
+			keys.append([i.id, str(i)])
+
 	else:
 		keys = model.objects.all().values_list(*args)
 	for i in keys:
@@ -212,11 +227,26 @@ def callback_inline(call):
 			book_data[chat_id][0].status = models.Status.objects.filter(name__contains='брон')[0]
 			book_data[chat_id][0].save()
 			# bot.edit_message_reply_markup(call.message.chat.id, call.message.id, types.ReplyKeyboardRemove())
-			del book_data[chat_id]
+			book_data[chat_id] = [models.Booking(), False, None]
 			bot.send_message(call.message.chat.id, 'Бронирование завершено')
 			
 		if "book-no" in spl:
 			del book_data[chat_id]
+
+		if "booking" in spl:
+			print('del?')
+			markup = types.InlineKeyboardMarkup()
+			btn_yes = types.InlineKeyboardButton('Да', callback_data = str(spl[0])+'_del-book-yes')
+			btn_no = types.InlineKeyboardButton('Нет', callback_data = 'del-book-no')
+			markup.add(btn_yes, btn_no)
+			book_data[chat_id][2] = bot.send_message(chat_id, 'Удалить бронирование?', reply_markup=markup)
+			# bot.edit_message_reply_markup(call.message.chat.id, call.message.id, types.ReplyKeyboardRemove())
+		
+		if "del-book-yes" in spl:
+			models.Booking.objects.get(id = int(spl[0]), user__bot_id = chat_id).delete()
+		
+
+
 	
 
 #-------------------------*****************------------------------------------#
@@ -283,15 +313,8 @@ def start_booking(message):
 	
 	chat_id = message.json['from']['id']
 	if chat_id not in book_data:
-		bot.send_message(chat_id,'Вы зарегистрированы')
 		book_data[chat_id] = [models.Booking(), False, None]
-	
-	# if chat_id in book_data:
-	# 	del_message(chat_id, book_data[chat_id][2], message)
-	# else:
-	# 	del_message(chat_id, message)
-	
-	
+
 	book_data[chat_id][2] = bot.send_message(chat_id, 'Выберите типы объектов', reply_markup=get_buttons(models.ObjectType, 'types', 'id', 'name', obj_types = chat_id))
 	
 	return	
