@@ -39,7 +39,7 @@ class ObjectTypeAdmin(admin.ModelAdmin):
     list_display = ['id', 'name']
 @admin.register(Booking)
 class BookingAdmin(admin.ModelAdmin):
-    list_display = ['id', 'get_status_name', 'get_user_name', 'get_school_object_name', 'get_campus_name']
+    list_display = ['id', 'get_school_object_name','start','end', 'get_campus_name', 'get_status_name', 'get_user_name',]
     def get_status_name(self, obj):
         return obj.status.name
     get_status_name.admin_order_field  = 'status'  #Allows column order sorting
@@ -49,6 +49,9 @@ class BookingAdmin(admin.ModelAdmin):
     get_user_name.admin_order_field  = 'user'  #Allows column order sorting
     get_user_name.short_description = 'Пользователь'  #Renames column head
 
+    def get_start(self, obj):
+        pass
+    
     def get_school_object_name(self, obj):
         return obj.school_object.object_name
     get_school_object_name.admin_order_field  = 'school_object'  #Allows column order sorting

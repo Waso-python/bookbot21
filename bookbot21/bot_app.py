@@ -6,6 +6,7 @@ import os
 from dotenv import load_dotenv
 import telebot
 from telebot import types
+import pytz
 
 
 dotenv_path = os.path.join(os.path.dirname(__file__), '.env')

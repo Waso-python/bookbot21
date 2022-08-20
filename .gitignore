@@ -55,6 +55,10 @@ coverage.xml
 *.mo
 *.pot
 
+# Jupiter
+*.ipynb
+
+
 # Django stuff:
 *.log
 local_settings.py
