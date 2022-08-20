@@ -107,6 +107,7 @@ def get_buttons(model, key, *args, **kwargs):
 		user_campus = user.campus.id
 		role_id = user.role.id
 		# models.Role.objects.get(id = role_id).school_objects.all().filter(object_type_id = kwargs['type_id'])
+		markup = types.InlineKeyboardMarkup(row_width=1)
 		keys = models.Role.objects.get(id = role_id).school_objects.filter(object_campus_id=user_campus).filter(object_type_id = kwargs['type_id']).values_list(*args)
 	elif 'days' in kwargs:
 		date_now = datetime.now().date()
@@ -119,16 +120,17 @@ def get_buttons(model, key, *args, **kwargs):
 		print(time)
 		print(datetime.strptime(f'1:00:00', '%H:%M:%S').time())
 		keys = []
+		markup = types.InlineKeyboardMarkup(row_width=5)
 		for i in range(24):
 			if (datetime.strptime(f'{i}:00:00', '%H:%M:%S').time(),) not in time:
 				keys.append([f'{i}:00:00', f'{i}:00'])
 	elif 'booking' in kwargs:
 		keys = []
+		markup = types.InlineKeyboardMarkup(row_width=1)
 		booking = model.objects.filter(user__bot_id=kwargs['booking'], end__gte=datetime.now())
 		for i in booking:
 			print(i)
 			keys.append([i.id, str(i)])
-
 	else:
 		keys = model.objects.all().values_list(*args)
 	for i in keys:
